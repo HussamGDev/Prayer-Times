@@ -1,0 +1,19 @@
+{
+  "defaultLocale": "en",
+  "languages": [
+    {
+      "code": "en",
+      "name": "English",
+      "nativeName": "English",
+      "dir": "ltr",
+      "file": "en.json"
+    },
+    {
+      "code": "ar",
+      "name": "Arabic",
+      "nativeName": "العربية",
+      "dir": "rtl",
+      "file": "ar.json"
+    }
+  ]
+}
