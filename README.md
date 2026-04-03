@@ -14,6 +14,23 @@ It was made to stay practical:
 - countdown
 - editable side files for localization and audio
 
+## Screenshots
+
+# Prayer Section
+![Prayers](./screenshots/Prayer Times - Prayers.jpg)
+
+# Alarms Section
+![Alarms](./screenshots/Prayer Times - Alarms.jpg)
+
+# Countdown Section
+![Countdown](./screenshots/Prayer Times - Countdown.jpg)
+
+# Settings Section
+![Settings1](./screenshots/Prayer Times - Settings 1.jpg)
+
+![Settings2](./screenshots/Prayer Times - Settings 2.jpg)
+
+
 ## What You Get
 - Daily prayer schedule
 - Next prayer and time left
