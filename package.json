@@ -2,11 +2,13 @@
   "name": "prayer-times",
   "private": true,
   "version": "0.100.0",
+  "main": "electron/main.cjs",
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 5174",
     "build": "vite build",
-    "preview": "vite preview --host 0.0.0.0 --port 4174"
+    "preview": "vite preview --host 0.0.0.0 --port 4174",
+    "build:exe": "npm run build && electron-builder --win nsis dir"
   },
   "dependencies": {
     "react": "^18.3.1",
@@ -14,6 +16,69 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",
+    "electron": "^37.3.1",
+    "electron-builder": "^26.0.12",
     "vite": "^5.4.10"
+  },
+  "build": {
+    "appId": "com.hussamgdev.prayertimes",
+    "productName": "Prayer Times",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "extraFiles": [
+      {
+        "from": "audio",
+        "to": "audio",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "localization",
+        "to": "localization",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "EDITABLE_FILES.md",
+        "to": "EDITABLE_FILES.md",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "README.md",
+        "to": "README.md",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "LICENSE.txt",
+        "to": "LICENSE.txt",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "dir"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
   }
 }

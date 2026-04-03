@@ -37,8 +37,8 @@ export const defaultAlertDraft = () => ({
 });
 
 export const defaultPrayerSettings = () => ({
-  lat: "24.7136",
-  lon: "46.6753",
+  lat: "24.38",
+  lon: "46.43",
   gmt: "180",
   method: "4",
   beforeAudio: "",

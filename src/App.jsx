@@ -8,7 +8,13 @@ import {
   STORAGE_KEY,
   todayString
 } from "./data";
-import { defaultLocale, languageList, locales, translate } from "./i18n";
+import {
+  defaultLocale,
+  languageList as builtInLanguageList,
+  loadLocalePack,
+  locales as builtInLocales,
+  translate
+} from "./i18n";
 
 const PRAYER_KEYS = ["fajr", "sunrise", "dhuhr", "asr", "maghrib", "isha"];
 const APP_TABS = ["prayers", "alerts", "countdown"];
@@ -21,6 +27,13 @@ const WEEKDAY_OPTIONS = [
   { value: 5, key: "days.fri" },
   { value: 6, key: "days.sat" }
 ];
+
+const DEFAULT_AUDIO_FILES = {
+  before: "before-prayer.mp3",
+  onTime: "on-prayer.mp3",
+  after: "after-prayer.mp3",
+  normal: "normal-alarm.mp3"
+};
 
 function createId(prefix) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -145,7 +158,13 @@ function getNextPrayer(prayerItems, nowTick) {
     if (!/^\d{1,2}:\d{2}$/.test(value || "")) continue;
     const [hours, minutes] = value.split(":").map(Number);
     const prayerMinutes = hours * 60 + minutes;
-    if (prayerMinutes >= currentMinutes) return { key, time: value };
+    if (prayerMinutes >= currentMinutes) return { key, time: value, dayOffset: 0 };
+  }
+
+  for (const key of PRAYER_KEYS) {
+    const value = prayerItems[key];
+    if (!/^\d{1,2}:\d{2}$/.test(value || "")) continue;
+    return { key, time: value, dayOffset: 1 };
   }
 
   return null;
@@ -192,6 +211,11 @@ function readFileAsDataUrl(file) {
 
 export default function App() {
   const [state, setState] = usePersistentState();
+  const [localePack, setLocalePack] = useState(() => ({
+    defaultLocale,
+    locales: builtInLocales,
+    languageList: builtInLanguageList
+  }));
   const [nowTick, setNowTick] = useState(Date.now());
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("prayers");
@@ -210,12 +234,25 @@ export default function App() {
   const normalAlertMinuteRef = useRef("");
   const audioUnlockedRef = useRef(false);
 
-  const locale = state.settings.language || defaultLocale;
-  const dir = locales[locale]?.dir || locales[defaultLocale]?.dir || "ltr";
-  const t = (key) => translate(locale, key);
+  const activeDefaultLocale = localePack.defaultLocale || defaultLocale;
+  const locale = localePack.locales[state.settings.language] ? state.settings.language : activeDefaultLocale;
+  const dir = localePack.locales[locale]?.dir || localePack.locales[activeDefaultLocale]?.dir || "ltr";
+  const t = (key) => translate(locale, key, localePack.locales, activeDefaultLocale);
   const prayerSettings = state.settings;
   const prayerItems = state.prayers?.items || {};
   const alerts = state.alerts || [];
+
+  useEffect(() => {
+    let active = true;
+
+    loadLocalePack().then((nextPack) => {
+      if (active) setLocalePack(nextPack);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const mutateState = (producer) => {
     setState((current) => ({
@@ -244,9 +281,10 @@ export default function App() {
     });
   }, [alerts]);
 
-  const formatPrayerCountdown = (timeValue) => {
+  const formatPrayerCountdown = (timeValue, rollToTomorrow = false) => {
     if (!timeValue || !/^\d{1,2}:\d{2}$/.test(timeValue)) return "--";
-    const target = new Date(`${todayString()}T${timeValue}:00`).getTime();
+    let target = new Date(`${todayString()}T${timeValue}:00`).getTime();
+    if (rollToTomorrow) target += 24 * 60 * 60 * 1000;
     const diff = target - nowTick;
     if (diff < 0) return t("labels.passed");
     const totalSeconds = Math.floor(diff / 1000);
@@ -256,6 +294,20 @@ export default function App() {
     if (minutes > 0) return `${minutes}m`;
     return `${Math.max(0, totalSeconds)}s`;
   };
+
+  const getRuntimeAudioUrl = (kind) => {
+    const fileName = DEFAULT_AUDIO_FILES[kind];
+    if (!fileName) return "";
+
+    if (typeof window !== "undefined" && window.prayerTimesDesktop?.getRuntimeAssetUrl) {
+      return window.prayerTimesDesktop.getRuntimeAssetUrl(`audio/${fileName}`);
+    }
+
+    return "/Alarm.mp3";
+  };
+
+  const resolveAudioSource = (source, kind) => source || getRuntimeAudioUrl(kind);
+  const getAudioDisplayName = (savedName, kind) => savedName || DEFAULT_AUDIO_FILES[kind] || t("labels.noAudio");
 
   const playAudioSource = async (source, bucket, fromUserGesture = false) => {
     if (!source) {
@@ -281,10 +333,10 @@ export default function App() {
   };
 
   const getPrayerAudioForSlot = (slotKey) => {
-    if (slotKey === "before") return prayerSettings.beforeAudio || prayerSettings.onTimeAudio || "";
-    if (slotKey === "onTime") return prayerSettings.onTimeAudio || "";
-    if (slotKey === "after") return prayerSettings.afterAudio || prayerSettings.onTimeAudio || "";
-    return prayerSettings.onTimeAudio || "";
+    if (slotKey === "before") return resolveAudioSource(prayerSettings.beforeAudio || prayerSettings.onTimeAudio, "before");
+    if (slotKey === "onTime") return resolveAudioSource(prayerSettings.onTimeAudio, "onTime");
+    if (slotKey === "after") return resolveAudioSource(prayerSettings.afterAudio || prayerSettings.onTimeAudio, "after");
+    return resolveAudioSource(prayerSettings.onTimeAudio, "onTime");
   };
 
   const refreshPrayerTimes = async () => {
@@ -666,7 +718,7 @@ export default function App() {
           }
         });
 
-        void playAudioSource(prayerSettings.normalAlertAudio, "normal", false);
+        void playAudioSource(resolveAudioSource(prayerSettings.normalAlertAudio, "normal"), "normal", false);
 
         if (
           prayerSettings.browserNotificationsEnabled &&
@@ -711,7 +763,7 @@ export default function App() {
       }
     }));
 
-    void playAudioSource(prayerSettings.normalAlertAudio, "normal", false);
+    void playAudioSource(resolveAudioSource(prayerSettings.normalAlertAudio, "normal"), "normal", false);
 
     if (
       prayerSettings.browserNotificationsEnabled &&
@@ -775,7 +827,7 @@ export default function App() {
           <div className="hero-chip-group">
             <span className="hero-chip">{nextPrayer ? t(`prayers.${nextPrayer.key}`) : "--"}</span>
             <span className="hero-chip">{nextPrayer ? formatClockTime(nextPrayer.time) : "--"}</span>
-            <span className="hero-chip">{nextPrayer ? formatPrayerCountdown(nextPrayer.time) : "--"}</span>
+            <span className="hero-chip">{nextPrayer ? formatPrayerCountdown(nextPrayer.time, nextPrayer.dayOffset > 0) : "--"}</span>
           </div>
         </section>
 
@@ -790,7 +842,7 @@ export default function App() {
           </div>
           <div className="summary-card">
             <small>{t("labels.timeLeft")}</small>
-            <strong>{nextPrayer ? formatPrayerCountdown(nextPrayer.time) : "--"}</strong>
+            <strong>{nextPrayer ? formatPrayerCountdown(nextPrayer.time, nextPrayer.dayOffset > 0) : "--"}</strong>
           </div>
           <div className="summary-card">
             <small>{t("labels.prayerStatus")}</small>
@@ -1117,32 +1169,32 @@ export default function App() {
                     <div className="audio-block">
                       <div className="audio-row-head">
                         <span className="field-label">{t("labels.onPrayerAudio")}</span>
-                        <button className="ghost-button small-button" type="button" onClick={() => void playAudioSource(prayerSettings.onTimeAudio, "prayer", true)}>
+                        <button className="ghost-button small-button" type="button" onClick={() => void playAudioSource(resolveAudioSource(prayerSettings.onTimeAudio, "onTime"), "prayer", true)}>
                           {t("actions.test")}
                         </button>
                       </div>
                       <input type="file" accept="audio/*" onChange={(e) => void handleAudioPick("onTimeAudio", "onTimeAudioName", "prayer", e)} />
-                      <small>{t("labels.audioCurrent")}: {prayerSettings.onTimeAudioName || t("labels.noAudio")}</small>
+                      <small>{t("labels.audioCurrent")}: {getAudioDisplayName(prayerSettings.onTimeAudioName, "onTime")}</small>
                     </div>
                     <div className="audio-block">
                       <div className="audio-row-head">
                         <span className="field-label">{t("labels.beforePrayerAudio")}</span>
-                        <button className="ghost-button small-button" type="button" onClick={() => void playAudioSource(prayerSettings.beforeAudio || prayerSettings.onTimeAudio, "prayer", true)}>
+                        <button className="ghost-button small-button" type="button" onClick={() => void playAudioSource(resolveAudioSource(prayerSettings.beforeAudio || prayerSettings.onTimeAudio, "before"), "prayer", true)}>
                           {t("actions.test")}
                         </button>
                       </div>
                       <input type="file" accept="audio/*" onChange={(e) => void handleAudioPick("beforeAudio", "beforeAudioName", "prayer", e)} />
-                      <small>{t("labels.audioCurrent")}: {prayerSettings.beforeAudioName || t("labels.noAudio")}</small>
+                      <small>{t("labels.audioCurrent")}: {getAudioDisplayName(prayerSettings.beforeAudioName, "before")}</small>
                     </div>
                     <div className="audio-block">
                       <div className="audio-row-head">
                         <span className="field-label">{t("labels.afterPrayerAudio")}</span>
-                        <button className="ghost-button small-button" type="button" onClick={() => void playAudioSource(prayerSettings.afterAudio || prayerSettings.onTimeAudio, "prayer", true)}>
+                        <button className="ghost-button small-button" type="button" onClick={() => void playAudioSource(resolveAudioSource(prayerSettings.afterAudio || prayerSettings.onTimeAudio, "after"), "prayer", true)}>
                           {t("actions.test")}
                         </button>
                       </div>
                       <input type="file" accept="audio/*" onChange={(e) => void handleAudioPick("afterAudio", "afterAudioName", "prayer", e)} />
-                      <small>{t("labels.audioCurrent")}: {prayerSettings.afterAudioName || t("labels.noAudio")}</small>
+                      <small>{t("labels.audioCurrent")}: {getAudioDisplayName(prayerSettings.afterAudioName, "after")}</small>
                     </div>
 
                     <small className="settings-inline-note">{t("labels.audioStatus")}: {t(`status.${audioStatus.prayer}`)}</small>
@@ -1155,12 +1207,12 @@ export default function App() {
                     <div className="audio-block single-audio-block">
                       <div className="audio-row-head">
                         <span className="field-label">{t("labels.normalAlarmAudio")}</span>
-                        <button className="ghost-button small-button" type="button" onClick={() => void playAudioSource(prayerSettings.normalAlertAudio, "normal", true)}>
+                        <button className="ghost-button small-button" type="button" onClick={() => void playAudioSource(resolveAudioSource(prayerSettings.normalAlertAudio, "normal"), "normal", true)}>
                           {t("actions.test")}
                         </button>
                       </div>
                       <input type="file" accept="audio/*" onChange={(e) => void handleAudioPick("normalAlertAudio", "normalAlertAudioName", "normal", e)} />
-                      <small>{t("labels.audioCurrent")}: {prayerSettings.normalAlertAudioName || t("labels.noAudio")}</small>
+                      <small>{t("labels.audioCurrent")}: {getAudioDisplayName(prayerSettings.normalAlertAudioName, "normal")}</small>
                       <small>{t("labels.audioStatus")}: {t(`status.${audioStatus.normal}`)}</small>
                     </div>
                   </div>
@@ -1192,7 +1244,7 @@ export default function App() {
                       </small>
                     </div>
                     <select value={locale} onChange={(e) => updateSetting("language", e.target.value)}>
-                      {languageList.map((language) => (
+                      {localePack.languageList.map((language) => (
                         <option key={language.code} value={language.code}>
                           {language.nativeName || language.name || language.code}
                         </option>
