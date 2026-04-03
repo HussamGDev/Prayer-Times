@@ -28,8 +28,6 @@ You can use either of these:
 
 - `Prayer Times Setup ... .exe`
   Installable version for normal users
-- `win-unpacked`
-  Portable version with no installation
 
 If you use the portable version, run:
 - `Prayer Times.exe`
