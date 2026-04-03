@@ -51,9 +51,9 @@ function getLocalizationBundle() {
 function createWindow() {
   const window = new BrowserWindow({
     width: 1360,
-    height: 905,
+    height: 915,
     minWidth: 1360,
-    minHeight: 905,
+    minHeight: 915,
     autoHideMenuBar: true,
     backgroundColor: "#121212",
     webPreferences: {
