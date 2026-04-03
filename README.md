@@ -16,16 +16,16 @@ It was made to stay practical:
 
 ## Screenshots
 
-# Prayer Section
+### Prayer Section
 ![Prayers](./Screenshots/Prayer-Times-Prayers.jpg)
 
-# Alarms Section
+### Alarms Section
 ![Alarms](./Screenshots/Prayer-Times-Alarms.jpg)
 
-# Countdown Section
+### Countdown Section
 ![Countdown](./Screenshots/Prayer-Times-Countdown.jpg)
 
-# Settings Section
+### Settings Section
 ![Settings1](./Screenshots/Prayer-Times-Settings-1.jpg)
 
 ![Settings2](./Screenshots/Prayer-Times-Settings-2.jpg)
