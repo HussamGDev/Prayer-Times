@@ -17,18 +17,18 @@ It was made to stay practical:
 ## Screenshots
 
 # Prayer Section
-![Prayers](./screenshots/Prayer Times - Prayers.jpg)
+![Prayers](./screenshots/Prayer-Times-Prayers.jpg)
 
 # Alarms Section
-![Alarms](./screenshots/Prayer Times - Alarms.jpg)
+![Alarms](./screenshots/Prayer-Times-Alarms.jpg)
 
 # Countdown Section
-![Countdown](./screenshots/Prayer Times - Countdown.jpg)
+![Countdown](./screenshots/Prayer-Times-Countdown.jpg)
 
 # Settings Section
-![Settings1](./screenshots/Prayer Times - Settings 1.jpg)
+![Settings1](./screenshots/Prayer-Times-Settings-1.jpg)
 
-![Settings2](./screenshots/Prayer Times - Settings 2.jpg)
+![Settings2](./screenshots/Prayer-Times-Settings-2.jpg)
 
 
 ## What You Get
